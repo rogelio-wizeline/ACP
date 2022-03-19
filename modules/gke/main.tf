@@ -1,19 +1,3 @@
-# Variables
-variable "gke_username" {
-  default     = ""
-  description = "gke username"
-}
-
-variable "gke_password" {
-  default     = ""
-  description = "gke password"
-}
-
-variable "gke_num_nodes" {
-  default     = 2
-  description = "number of gke nodes"
-}
-
 # GKE cluster resources
 # GKE
 resource "google_container_cluster" "primary" {
@@ -26,8 +10,8 @@ resource "google_container_cluster" "primary" {
   remove_default_node_pool = true
   initial_node_count       = 1
 
-  network    = google_compute_network.vpc.name
-  subnetwork = google_compute_subnetwork.subnet.name
+  network    = var.vpc_id
+  subnetwork = var.subnet_id
 }
 
 # Separately Managed Node Pool

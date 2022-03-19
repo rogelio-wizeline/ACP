@@ -1,23 +1,3 @@
-# Variables
-variable "project_id" {
-  description = "project id"
-}
-
-variable "region" {
-  description = "region"
-}
-
-variable "zone" {
-    description = "zone"
-}
-
-# Provider
-provider "google" {
-  project = var.project_id
-  region  = var.region
-  zone    = var.zone
-}
-
 # Networking resources
 # VPC
 resource "google_compute_network" "vpc" {
