@@ -17,6 +17,14 @@ module "vpc" {
     zone = var.zone
 }
 
+module "composer" {
+    source = "./modules/cloud_composer"
+
+    project_id = var.project_id
+    vpc_id = module.vpc.vpc
+    subnet_id = module.vpc.subnet
+}
+
 module "cloudsql" {
     source = "./modules/cloud_sql"
 
@@ -31,9 +39,9 @@ module "gke" {
     source = "./modules/gke"
 
     project_id = var.project_id
+    gke_username = var.gke_username
     region = var.region
     zone = var.zone
-    gke_username = var.gke_username
     gke_password = var.gke_password
     gke_num_nodes = var.gke_num_nodes
     vpc_id = module.vpc.vpc
