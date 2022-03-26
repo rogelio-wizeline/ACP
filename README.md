@@ -62,6 +62,7 @@ Based on the self-study material, recorded and live session, and mentorship cove
 ##### Solution and modifications:
 
 For this milestone, I made an `Apache Beam` file to run in `Dataflow`. It's intended to be used as a template on `Dataflow`.
+I also changed PostgreSQL in Cloud SQL for BigQuery, as it's *way* easier to work with BQ in Dataflow. BigQuery has a dataset called `transactional` where I create a table `user_reviews` with the info from the CSV file.
 
 ###### Creating a template
 
