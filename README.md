@@ -3,6 +3,8 @@
 This repository was made for the DE Apprenticeship capstone project.
 It's divided into seven milestones.
 
+The course content is described as follows, but several modifications were made on the run, and are described after each milestone's intent explanation (after a dashed line).
+
 This project assumes that you have a file named `terraform.tfvars` at the root of the project with the following:
 ```terraform
 project_id = <YOUR_GCP_PROJECT_ID>
@@ -28,6 +30,10 @@ main Data Pipeline.
 - What has been listed in this milestone is just for guidance and to help you distribute your workload; you can build more or fewer items if necessary. However, if you build fewer items at this point, you have to cover the remaining tasks in the next milestone.
 - Do not hesitate to ask for mentoring if you need help with this exercise, remember that you can do it by our Slack channel "dataeng-apprenticeship".
 
+---
+##### Solution and modifications
+To solve this milestone, I just used Google Cloud Composer with all the default settings. DAGs can be found in the `dags` folder.
+
 ## Milestone 2
 On the drive folder you will find two resources for this milestone:
 - A png file with the schema to create your user_purchase table.
@@ -51,6 +57,61 @@ Based on the self-study material, recorded and live session, and mentorship cove
 ##### NOTES:
 - What has been listed in this milestone is just for guidance and to help you distribute your  workload; you can build more or fewer items if necessary. However, if you build fewer items at this point, you have to cover the remaining tasks in the next milestone.
 - Do not hesitate to ask for mentoring if you need help with this exercise, remember that you can do it by our Slack channel "dataeng-apprenticeship".
+
+---
+##### Solution and modifications:
+
+For this milestone, I made an `Apache Beam` file to run in `Dataflow`. It's intended to be used as a template on `Dataflow`.
+
+###### Creating a template
+
+A template needs to be uploaded as an encoded JSON file. To do that, you can run the dataflow job in your machine as you would run a regular job, but adding the `--template_location=gs://<BUCKET>/path/to/template/folder/<TEMPLATE_NAME>` parameter when running it. The template name is best left without file extension. For example:
+
+```
+python dataflow/test_template.py  --template_location=gs://<BUCKET>/templates/test_template
+```
+
+Keep in mind you need to have apache-beam installed. This project was developed using Python3.9 and apache-beam 2.37.0.
+
+To develop an apache beam job to be run in Dataflow as a template, the process is pretty much the same as a regular job, but any parameters that will be used in you job need to go through `ValueProvider`. `ValueProvider` values can __only__ be used as parameters for ParDo/DoFn functions (that's seldom advertised in the docs).
+
+After running the command above, a file named `test_template` will be created.
+
+To accept parameters, you'll need a `metadata` file. It's a JSON file that contains certain data the template will use... this is evident when you use the Dataflow UI. For it to work, it needs to be named like: <TEMPLATE_NAME>_metadata. If your template is called `test_template`, then the metadata file __must__ be named `test_template_metadata`, without any extension.
+
+Note that if you named your template with an extension, for example `test_template.json`, the metadata file __must__ be named `test_template.json_metadata`. It's an awkward naming, so it's best to leave your template file without any extension.
+
+A metadata file looks like this:
+```
+{
+  "name": "Test1",
+  "description": "An example pipeline that prints the parameter received.",
+  "parameters": [
+    {
+      "name": "to_print",
+      "label": "String to print",
+      "helpText": "String to print in the pipeline's console."
+    }
+  ]
+}
+```
+
+More about metadata can be found [here](https://cloud.google.com/dataflow/docs/guides/templates/creating-templates#using-metadata-in-your-pipeline-code).
+
+After you've created your metadata file, it needs to be placed in the same folder as your template file in GCS. In our example we placed our template in `gs://<BUCKET>/path/to/template/folder/<TEMPLATE_NAME>`, so our file must be in `gs://<BUCKET>/path/to/template/folder/<TEMPLATE_NAME>_metadata`.
+
+###### Running the template:
+A dataflow template can be run from the `Dataflow UI`, with the `gcloud` CLI, with `REST`, or with `DataflowTemplatedJobStartOperator` in Airflow. We'll do the latter for the project, but for testing purposes, using the Dataflow UI works wonders.
+
+To run in Airflow, you'll need something like this in your DAG:
+```
+start_template_job = DataflowTemplatedJobStartOperator(
+    task_id="start-template-job",
+    template='gs://<BUCKET>/templates/test_template',
+    parameters={'to_print': 'holi desde airflow'},
+    location='us-central1'
+)
+```
 
 ## Milestone 3
 On the drive folder you will find two resources for this milestone:

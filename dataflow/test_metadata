@@ -1,0 +1,11 @@
+{
+  "name": "Test1",
+  "description": "An example pipeline that prints the parameter.",
+  "parameters": [
+    {
+      "name": "to_print",
+      "label": "String to print",
+      "helpText": "String to print in the pipeline's console."
+    }
+  ]
+}
