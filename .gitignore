@@ -37,3 +37,4 @@ terraform.rc
 # Python stuff
 dataflow/__pycache__/
 **.egg**
+**.DS_STORE
