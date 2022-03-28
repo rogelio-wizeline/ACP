@@ -68,10 +68,11 @@ def run(argv=None):
 
     with beam.Pipeline(options=pipeline_options) as p:
         rows = (p
-                | 'Read from Pub/Sub' >> beam.io.ReadFromText(custom_options.input, skip_header_lines=1)
+                | 'Read from GCS' >> beam.io.ReadFromText(custom_options.input, skip_header_lines=1)
                 | 'Make BQ structure' >> beam.ParDo(BQStructureDoFn())
                 | 'Write to BQ' >> beam.io.WriteToBigQuery(
-                    'shaped-icon-344520:transactional.user_purchase',
+                    'shaped-icon-344520:transactional.purchase',
+                    schema='InvoiceNo:STRING,StockCode:STRING,Description:STRING,Quantity:INTEGER,InvoiceDate:TIMESTAMP,UnitPrice:FLOAT,CustomerID:INTEGER,Country:STRING',
                     create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
                     write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
                     batch_size=50000
