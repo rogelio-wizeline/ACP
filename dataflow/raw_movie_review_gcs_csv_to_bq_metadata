@@ -1,0 +1,11 @@
+{
+  "name": "GCS CSV to BQ",
+  "description": "Moves a CSV file FROM GCS to a BQ table. Creates the table if needed.",
+  "parameters": [
+    {
+      "name": "input",
+      "label": "Path to file",
+      "helpText": "The path to the CSV file to write into BQ (Something like 'gs://<BUCKET>/path/to/file.csv')"
+    }
+  ]
+}

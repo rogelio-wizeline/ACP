@@ -27,14 +27,9 @@ class BQStructureDoFn(beam.DoFn):
         logging.info(f'Splitted element: {values}')
         try:
             values_dict = {
-                'InvoiceNo': values[0],
-                'StockCode': values[1],
-                'Description': values[2],
-                'Quantity': int(values[3]),
-                'InvoiceDate': datetime.strptime(values[4], '%m/%d/%Y %H:%M').isoformat(),
-                'UnitPrice': float(values[5]),
-                'CustomerID': int(values[6]),
-                'Country': values[7],
+                'cid': values[0],
+                'review_str': values[1],
+                'id_review': values[2],
             }
             logging.info(f'Dict element: {values_dict}')
             return [values_dict]
@@ -62,16 +57,17 @@ def run(argv=None):
 
     worker_options = pipeline_options.view_as(WorkerOptions)
     worker_options.disk_size_gb = 30
-    worker_options.num_workers = 4
+    worker_options.num_workers = 1
     worker_options.machine_type = 'n1-standard-1'
     pipeline_options.view_as(SetupOptions).save_main_session = True
 
     with beam.Pipeline(options=pipeline_options) as p:
         rows = (p
-                | 'Read from Pub/Sub' >> beam.io.ReadFromText(custom_options.input, skip_header_lines=1)
+                | 'Read from GCS' >> beam.io.ReadFromText(custom_options.input, skip_header_lines=1)
                 | 'Make BQ structure' >> beam.ParDo(BQStructureDoFn())
                 | 'Write to BQ' >> beam.io.WriteToBigQuery(
-                    'shaped-icon-344520:transactional.user_purchase',
+                    'shaped-icon-344520:raw.movie_review',
+                    schema='cid:STRING,review_str:STRING,id_review:STRING',
                     create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
                     write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
                     batch_size=50000

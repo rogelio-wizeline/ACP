@@ -104,15 +104,33 @@ After you've created your metadata file, it needs to be placed in the same folde
 ###### Running the template:
 A dataflow template can be run from the `Dataflow UI`, with the `gcloud` CLI, with `REST`, or with `DataflowTemplatedJobStartOperator` in Airflow. We'll do the latter for the project, but for testing purposes, using the Dataflow UI works wonders.
 
-To run in Airflow, you'll need something like this in your DAG:
+To run in Airflow, I tried both `airflow.providers.google.cloud.operators.dataflow.DataflowTemplatedJobStartOperator` and `from airflow.contrib.operators.dataflow_operator import DataflowTemplateOperator`. `DataflowTemplateOperator` works best in my opinion, but I really don't know why. My job writes to BigQuery and `DataflowTemplatedJobStartOperator` takes longer on the write step and can sometimes fail on this step... I haven't quite figured out why it behaves like this.
+
+Now, for that write step to work you need to specify a service account for the job to use that has the required permissions, i.e. writing to BigQuery or anything else you're doing in your job. Here is an example:
+
 ```
-start_template_job = DataflowTemplatedJobStartOperator(
-    task_id="start-template-job",
-    template='gs://<BUCKET>/templates/test_template',
-    parameters={'to_print': 'holi desde airflow'},
-    location='us-central1'
-)
+from airflow.providers.google.cloud.operators.dataflow import DataflowTemplatedJobStartOperator
+
+...
+
+dataflow_templated_job_start_op_with_default_options = DataflowTemplateOperator(
+        task_id='transactional-layer-dag',
+        retries=0,
+        template='gs://<YOUR_BUCKET>/templates/transactional_purchase_gcs_csv_to_bq',
+        job_name='transactional_layer',
+        parameters={'input': 'gs://<YOUR_BUCKET>/data/purchase_minimal.csv'},
+        dataflow_default_options={
+            "project": "<PROJECT_ID>",
+            "stagingLocation": "gs://<YOUR_BUCKET>/staging",
+            "tempLocation": "gs://<YOUR_BUCKET>/temp",
+            "serviceAccountEmail": "<YOUR_SERVICE_ACCOUNT>@<PROJECT_ID>.iam.gserviceaccount.com"
+        }
+    )
 ```
+
+<YOUR_SERVICE_ACCOUNT>, in my case, has permissions to read from GCS and write to BigQuery, as well as all Dataflow permissions.
+
+
 
 ## Milestone 3
 On the drive folder you will find two resources for this milestone:
