@@ -57,7 +57,7 @@ def run(argv=None):
 
     worker_options = pipeline_options.view_as(WorkerOptions)
     worker_options.disk_size_gb = 30
-    worker_options.num_workers = 4
+    worker_options.num_workers = 1
     worker_options.machine_type = 'n1-standard-1'
     pipeline_options.view_as(SetupOptions).save_main_session = True
 
