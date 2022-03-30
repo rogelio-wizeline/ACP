@@ -1,5 +1,6 @@
 import argparse
 import logging
+import xml.etree.ElementTree as ET
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import (GoogleCloudOptions,
@@ -17,29 +18,45 @@ class CustomPipelineOptions(PipelineOptions):
         parser.add_value_provider_argument('--input', type=str)
 
 
-class BQStructureDoFn(beam.DoFn):
+class ParseRowLogicDoFn(beam.DoFn):
     def __init__(self):
         pass
 
+    def get_browser(self, operating_system):
+        browsers = {
+            "Apple iOS": "Safari",
+            "Apple MacOS": "Safari",
+            "Google Android": "Google Chrome",
+            "Linux": "Firefox",
+            "Microsoft Windows": "Microsoft Edge"
+        }
+        return browsers.get(operating_system, "Brave")
+
     def process(self, element):
         logging.info(f'Raw element: {element}')
-        values = element.split(',')
-        coma_index = element.find(',')
-        id_review = element[:coma_index]
-        last_coma_index = element.rfind(',')
-        logging.info(f'Splitted element: {values}')
-        try:
-            values_dict = {
-                'cid': element[:coma_index],
-                'review_str': element[coma_index+1:last_coma_index],
-                'id_review': element[last_coma_index+1:],
-            }
-            logging.info(f'Dict element: {values_dict}')
-            return [values_dict]
-        except:
-            logging.info(f'ME MORIIII')
-            return []
+        root = ET.fromstring(element['log'])
+        logging.info(f'Root: {root}')
+        ret = {'logId': element['id_review']}
+        for child in root[0]:
+            if child.tag == 'logDate':
+                split_date = child.text.split('-')
+                ret['logDate'] = f'{split_date[2]}-{split_date[0]}-{split_date[1]}'
+            if child.tag == 'device':
+                ret['device'] = child.text
+            if child.tag == 'location':
+                ret['location'] = child.text
+            if child.tag == 'os':
+                ret['os'] = child.text
+            if child.tag == 'ipAddress':
+                ret['ipAddress'] = child.text
+            if child.tag == 'phoneNumber':
+                ret['phoneNumber'] = child.text
 
+        if ret['os']:
+            ret['browser'] = self.get_browser(ret['os'])
+
+        logging.info(f'Parsed dict: {ret}')
+        return [ret]
 
 def run(argv=None):
     parser = argparse.ArgumentParser()
@@ -66,16 +83,19 @@ def run(argv=None):
 
     with beam.Pipeline(options=pipeline_options) as p:
         rows = (p
-                | 'Read from GCS' >> beam.io.ReadFromText(custom_options.input, skip_header_lines=1)
-                | 'Make BQ structure' >> beam.ParDo(BQStructureDoFn())
+                | 'Read from BQ' >> beam.io.ReadFromBigQuery(
+                    table='shaped-icon-344520:raw.log_review'
+                )
+                | 'Parse row' >> beam.ParDo(ParseRowLogicDoFn())
                 | 'Write to BQ' >> beam.io.WriteToBigQuery(
-                    'shaped-icon-344520:raw.movie_review',
-                    schema='cid:STRING,review_str:STRING,id_review:STRING',
+                    'shaped-icon-344520:staging.log_review',
+                    schema='logId:STRING,logDate:DATE,device:STRING,location:STRING,os:STRING,browser:STRING,ipAddress:STRING,phoneNumber:STRING',
                     create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
                     write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
                     batch_size=50000
                 )
                 )
+
 
 
 if __name__ == '__main__':
