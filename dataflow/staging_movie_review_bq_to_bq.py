@@ -1,5 +1,6 @@
 import argparse
 import logging
+import xml.etree.ElementTree as ET
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import (GoogleCloudOptions,
@@ -9,6 +10,8 @@ from apache_beam.options.pipeline_options import (GoogleCloudOptions,
                                                   WorkerOptions)
 
 from datetime import datetime
+import nltk
+nltk.download('punkt')
 
 
 class CustomPipelineOptions(PipelineOptions):
@@ -17,29 +20,22 @@ class CustomPipelineOptions(PipelineOptions):
         parser.add_value_provider_argument('--input', type=str)
 
 
-class BQStructureDoFn(beam.DoFn):
+class ParseRowLogicDoFn(beam.DoFn):
     def __init__(self):
         pass
 
     def process(self, element):
         logging.info(f'Raw element: {element}')
-        values = element.split(',')
-        coma_index = element.find(',')
-        id_review = element[:coma_index]
-        last_coma_index = element.rfind(',')
-        logging.info(f'Splitted element: {values}')
-        try:
-            values_dict = {
-                'cid': element[:coma_index],
-                'review_str': element[coma_index+1:last_coma_index],
-                'id_review': element[last_coma_index+1:],
-            }
-            logging.info(f'Dict element: {values_dict}')
-            return [values_dict]
-        except:
-            logging.info(f'ME MORIIII')
-            return []
-
+        ret = {'userId': element['cid'], 'reviewId': element['id_review']}
+        # Tokenize
+        tokens = nltk.tokenize.word_tokenize(element['review_str'])
+        good = False
+        for token in tokens:
+            if token == 'good':
+                good = True
+        ret['positiveReview'] = good
+        logging.info(f'Parsed dict: {ret}')
+        return [ret]
 
 def run(argv=None):
     parser = argparse.ArgumentParser()
@@ -66,16 +62,19 @@ def run(argv=None):
 
     with beam.Pipeline(options=pipeline_options) as p:
         rows = (p
-                | 'Read from GCS' >> beam.io.ReadFromText(custom_options.input, skip_header_lines=1)
-                | 'Make BQ structure' >> beam.ParDo(BQStructureDoFn())
+                | 'Read from BQ' >> beam.io.ReadFromBigQuery(
+                    table='shaped-icon-344520:raw.movie_review'
+                )
+                | 'Parse row' >> beam.ParDo(ParseRowLogicDoFn())
                 | 'Write to BQ' >> beam.io.WriteToBigQuery(
-                    'shaped-icon-344520:raw.movie_review',
-                    schema='cid:STRING,review_str:STRING,id_review:STRING',
+                    'shaped-icon-344520:staging.movie_review',
+                    schema='userId:STRING,reviewId:STRING,positiveReview:BOOLEAN',
                     create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
                     write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
                     batch_size=50000
                 )
                 )
+
 
 
 if __name__ == '__main__':
